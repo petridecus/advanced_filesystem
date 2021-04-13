@@ -96,7 +96,7 @@ nufs_mknod(const char *path, mode_t mode, dev_t rdev)
     inode* nn = get_inode(inum);
     nn->refs = 1;
     nn->size = 0;
-    nn->mode = 0100644;
+    nn->mode = mode;
 
     // NOTE putting all new files in root directory for hw10
     inode* rnode = get_inode(0);
