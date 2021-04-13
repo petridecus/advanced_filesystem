@@ -7,8 +7,8 @@
 #include "bitmap.h"
 #include "util.h"
 
-#define MAX_INODES 32 // want it to fit in one page
-#define MAX_PAGES 10
+#define MAX_INODES 128 // 2 pages of 64 byte structs
+#define DIRECT_PAGES 10
 
 // NOTE view inode.h for documentation on inode functions/struct
 
@@ -23,7 +23,7 @@ get_inode(int inum) {
     if (inum > MAX_INODES) 
 	    puts("there's not even supposed to be that many dude");
     
-    return (inode*)(pages_get_page(0) + 8*sizeof(long) + inum*sizeof(inode));
+    return (inode*)(pages_get_page(1) + inum*sizeof(inode));
 }
 
 int
@@ -47,15 +47,21 @@ free_inode(int inum) {
     assert(bitmap_get(ibm, inum));
 
     inode* nn = get_inode(inum);
-    for (int ii = 0; ii < nn->pages; ++ii)
-        free_page(nn->ptrs[ii]);
 
+    for (int ii = 0; ii < nn->pages; ++ii)
+        if (ii < DIRECT_PAGES) free_page(nn->ptrs[ii]);
+    
+    // need to eventually clear indirect pointer as well...
+    
     bitmap_clear(ibm, inum);
 }
 
 // NOTE - only one ptr per node for hw10
 int
 inode_get_pnum(inode* node, int fpn) {
-    assert(fpn < MAX_PAGES);
-    return node->ptrs[fpn];
+    assert(fpn < DIRECT_PAGES);
+        return node->ptrs[fpn];
+
+    // need case for indirect pointers
+    return -1;
 }

@@ -68,17 +68,17 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     direntry* dd = (direntry*)(page + sizeof(int));
 
     for (int ii = 0; ii < num_entries; ++ii) {
-	printf("readdir reaching %s\n", dd->name);
-	rv = nufs_getattr(dd->name, &st);
-	if (rv < 0) return rv;
+	    printf("readdir reaching %s\n", dd->name);
+	    rv = nufs_getattr(dd->name, &st);
+	    if (rv < 0) return rv;
 	
-	// need to strip dir path from files in buffer
-	// as of now it's always just the "/" character
-	char relative_path[48];
-	for (size_t ii = 0; ii <= strlen(dd->name); ++ii)
-	    relative_path[ii] = dd->name[ii + strlen(path)];
+	    // need to strip dir path from files in buffer
+	    // as of now it's always just the "/" character
+	    char relative_path[48];
+	    for (size_t ii = 0; ii <= strlen(dd->name); ++ii)
+	        relative_path[ii] = dd->name[ii + strlen(path)];
         
-	filler(buf, relative_path, &st, rv);
+	    filler(buf, relative_path, &st, rv);
         ++dd;
     }
 
@@ -161,7 +161,7 @@ nufs_chmod(const char *path, mode_t mode)
 int
 nufs_truncate(const char *path, off_t size)
 {
-    int rv = -1;
+    int rv = 0;
     printf("truncate(%s, %ld bytes) -> %d\n", path, size, rv);
     return rv;
 }

@@ -10,11 +10,15 @@
 
 void
 directory_init() {
-    int existed = bitmap_get(get_pages_bitmap(), 1);
+    // NOTE something is going wrong when making 10+ files after chaning page structure
+    // was only having issues at 30+ before change...
+
+    int existed = bitmap_get(get_pages_bitmap(), 3);
     if (existed) return;
 
-    assert(alloc_page() == 1);
-    void* root = pages_get_page(1);
+    // TODO make sure pages 1 & 2 are actually being alloc'd for nodes
+    assert(alloc_page() == 3);
+    void* root = pages_get_page(3);
 
     int* num_entries = (int*)root;
     *num_entries = 0;
@@ -25,15 +29,15 @@ directory_init() {
     rnode->refs = 1;
     rnode->mode = 040755;
     rnode->size = 4096;
-    rnode->ptrs[0] = 1;
+    rnode->ptrs[0] = 3;
 }
 
 int 
 directory_lookup(const char *name) {
     if (strcmp(name, "/") == 0) return 0;
 
-    int* num_entries = (int*)(pages_get_page(1)); // hard coded to root
-    direntry* entry = (direntry*)(pages_get_page(1) + sizeof(int));
+    int* num_entries = (int*)(pages_get_page(3)); // hard coded to root
+    direntry* entry = (direntry*)(pages_get_page(3) + sizeof(int));
 
     // iterate thru all entries in the directory
     for (int ii = 0; ii < *num_entries; ++ii) {
@@ -68,7 +72,7 @@ directory_put(inode* dd, const char* name, int inum) {
 
 int
 rename_entry(const char* from, const char* to) {
-    void* dir_page = pages_get_page(1); // hard coded to root
+    void* dir_page = pages_get_page(3); // hard coded to root
     int* num_entries = (int*)dir_page;
 
     for (int ii = 0; ii < *num_entries; ++ii) {
@@ -85,7 +89,7 @@ rename_entry(const char* from, const char* to) {
 
 int
 remove_file(const char* path) {
-    void* dir_page = pages_get_page(1);
+    void* dir_page = pages_get_page(3);
     int *num_entries = (int*)dir_page;
 
     for (int ii = 0; ii < *num_entries; ++ii) {
@@ -94,14 +98,14 @@ remove_file(const char* path) {
     	if (!strcmp(curr_entry->name, path)) {
             free_inode(curr_entry->inum);
             
-	    for (int jj = ii; jj < *num_entries; ++jj) {
-		direntry* curr_entry = (direntry*)(dir_page + sizeof(int)
-						+ jj * sizeof(direntry));
-		direntry* next_entry = curr_entry + 1;
+	        for (int jj = ii; jj < *num_entries; ++jj) {
+		        direntry* curr_entry = (direntry*)(dir_page + sizeof(int)
+						                            + jj * sizeof(direntry));
+		        direntry* next_entry = curr_entry + 1;
 
-		memset(curr_entry->name, 0, strlen(curr_entry->name) + 1);
+		        memset(curr_entry->name, 0, strlen(curr_entry->name) + 1);
                 strcpy(curr_entry->name, next_entry->name);
-		curr_entry->inum = next_entry->inum;
+		        curr_entry->inum = next_entry->inum;
             }
 
             *num_entries = *num_entries - 1;
