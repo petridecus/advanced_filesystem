@@ -11,8 +11,8 @@ typedef struct inode {
     int refs; // reference count
     int mode; // permission & type
     int size; // bytes
-    int ptr; // direct pointer, only using 1 for hw10
-    struct timespec time; // something to store last access time
+    int ptrs[10]; // direct pointer, only using 1 for hw10
+    int pages;
 } inode;
 
 /**

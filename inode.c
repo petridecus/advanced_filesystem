@@ -7,7 +7,8 @@
 #include "bitmap.h"
 #include "util.h"
 
-#define MAX_INODES 64 // want it to fit in one page
+#define MAX_INODES 32 // want it to fit in one page
+#define MAX_PAGES 10
 
 // NOTE view inode.h for documentation on inode functions/struct
 
@@ -31,9 +32,8 @@ alloc_inode() {
     for (int ii = 0; ii < MAX_INODES; ++ii) {
         if (!bitmap_get(ibm, ii)) {
             bitmap_set(ibm, ii);
-	    inode* nn = get_inode(ii);
-	    nn->ptr = alloc_page();
-	    timespec_get(&nn->time, TIME_UTC);
+	        inode* nn = get_inode(ii);
+	        nn->ptrs[0] = alloc_page();
             return ii;
         }
     }
@@ -47,19 +47,15 @@ free_inode(int inum) {
     assert(bitmap_get(ibm, inum));
 
     inode* nn = get_inode(inum);
-    if (nn->ptr) free_page(nn->ptr);
+    for (int ii = 0; ii < nn->pages; ++ii)
+        free_page(nn->ptrs[ii]);
 
     bitmap_clear(ibm, inum);
-}
-
-void
-inode_set_time(inode*nn, struct timespec tt) {
-    nn->time = tt;
 }
 
 // NOTE - only one ptr per node for hw10
 int
 inode_get_pnum(inode* node, int fpn) {
-    assert(fpn == 0);
-    return node->ptr;
+    assert(fpn < MAX_PAGES);
+    return node->ptrs[fpn];
 }

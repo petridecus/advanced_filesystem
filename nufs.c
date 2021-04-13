@@ -39,8 +39,6 @@ nufs_getattr(const char *path, struct stat *st)
     st->st_mode = nn->mode;
     st->st_size = nn->size;
     st->st_uid = getuid();
-    st->st_atim = nn->time;
-    st->st_mtim = nn->time;
 
     printf("getattr(%s) [%d] -> {mode: %04o, size: %ld}\n", 
 		    path, inum, st->st_mode, st->st_size);
@@ -65,7 +63,7 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     inode* nn = get_inode(0);
 
-    void* page = pages_get_page(nn->ptr);
+    void* page = pages_get_page(nn->ptrs[0]);
     int num_entries = *(int*)page;
     direntry* dd = (direntry*)(page + sizeof(int));
 
@@ -185,7 +183,7 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
     int inum = directory_lookup(path);
     if (inum != -1) {
         inode* nn = get_inode(inum);
-        char* data = (char*)(pages_get_page(nn->ptr) + offset);
+        char* data = (char*)(pages_get_page(nn->ptrs[0]) + offset);
         memcpy(buf, data, size);
         printf("reading: \"%s\"\n", buf);
     }
@@ -203,7 +201,7 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
     if (inum != -1) {
         inode* nn = get_inode(inum);
         nn->size = max(size + offset, nn->size);
-        char* data = (char*)(pages_get_page(nn->ptr) + offset);
+        char* data = (char*)(pages_get_page(nn->ptrs[0]) + offset);
         memcpy(data, buf, size);
         printf("wrote: \"%s\"\n", data);
     }
@@ -217,18 +215,8 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
 int
 nufs_utimens(const char* path, const struct timespec ts[2])
 {
-    int inum = directory_lookup(path);
-
-    printf("utimens(%s, [%ld, %ld; %ld %ld]) -> %d\n",
-           path, ts[0].tv_sec, ts[0].tv_nsec, ts[1].tv_sec, 
-	   ts[1].tv_nsec, inum == -1 ? -ENOENT : 0);
-
-    if (inum == -1) return -ENOENT;
-
-    // NOTE time field didn't wind up being necessary but i'm keeping it
-    inode_set_time(get_inode(inum), ts[0]);
-
-    return 0;
+    printf("utimens(%s) -> %d\n", path, -1);
+    return -1;
 }
 
 // Extended operations

@@ -25,7 +25,7 @@ directory_init() {
     rnode->refs = 1;
     rnode->mode = 040755;
     rnode->size = 4096;
-    rnode->ptr = 1;
+    rnode->ptrs[0] = 1;
 }
 
 int 
@@ -46,7 +46,7 @@ directory_lookup(const char *name) {
 
 int
 directory_put(inode* dd, const char* name, int inum) {
-    void* dir_page = pages_get_page(dd->ptr);
+    void* dir_page = pages_get_page(dd->ptrs[0]);
 
     int* num_entries = (int*)dir_page;
     
