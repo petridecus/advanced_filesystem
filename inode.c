@@ -28,10 +28,10 @@ get_inode(int inum) {
 
 int
 alloc_inode() {
-    bitmap* ibm = get_inode_bitmap();
+    void* ibm = get_inode_bitmap();
     for (int ii = 0; ii < MAX_INODES; ++ii) {
         if (!bitmap_get(ibm, ii)) {
-            bitmap_set(ibm, ii);
+            bitmap_set(ibm, ii, 1);
 	        inode* nn = get_inode(ii);
 	        nn->ptrs[0] = alloc_page();
             return ii;
@@ -43,7 +43,7 @@ alloc_inode() {
 
 void
 free_inode(int inum) { 
-    bitmap* ibm = get_inode_bitmap();
+    void* ibm = get_inode_bitmap();
     assert(bitmap_get(ibm, inum));
 
     inode* nn = get_inode(inum);
@@ -53,7 +53,7 @@ free_inode(int inum) {
     
     // need to eventually clear indirect pointer as well...
     
-    bitmap_clear(ibm, inum);
+    bitmap_set(ibm, inum, 0);
 }
 
 // NOTE - only one ptr per node for hw10

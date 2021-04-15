@@ -49,7 +49,7 @@ int rename_entry(const char* from, const char* to);
  * Currently working under the assumption that a file won't 
  * have any additional refs, since there's only 1 dir.
  */
-int remove_file(const char* path);
+int directory_delete(inode* dd, const char* path);
 
 #endif
 
