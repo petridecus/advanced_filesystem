@@ -1,6 +1,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#include <libgen.h>
 #include <errno.h>
 #include "directory.h"
 
@@ -32,12 +33,21 @@ directory_init() {
     rnode->ptrs[0] = 3;
 }
 
+char*
+get_dir(const char* path) {
+    char* path_tmp = strdup(path);
+    char* dir_tmp = dirname(path_tmp);
+    char* dir = strdup(dir_tmp);
+    free(path_tmp);
+    return dir;
+}
+
 int 
-directory_lookup(const char *name) {
+directory_lookup(inode* dd, const char *name) {
     if (strcmp(name, "/") == 0) return 0;
 
-    int* num_entries = (int*)(pages_get_page(3)); // hard coded to root
-    direntry* entry = (direntry*)(pages_get_page(3) + sizeof(int));
+    int* num_entries = (int*)(pages_get_page(dd->ptrs[0])); // hard coded to root
+    direntry* entry = (direntry*)(pages_get_page(dd->ptrs[0]) + sizeof(int));
 
     // iterate thru all entries in the directory
     for (int ii = 0; ii < *num_entries; ++ii) {

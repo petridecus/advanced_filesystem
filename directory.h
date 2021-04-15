@@ -22,11 +22,13 @@ typedef struct direntry {
 // should only be called once
 void directory_init();
 
+char* get_dir(const char* path);
+
 /**
  * Searches for the fiven file path
  * in the root directory.
  */
-int directory_lookup(const char* name);
+int directory_lookup(inode* dd, const char* name);
 
 /**
  * Creates an entry for the given file path in
