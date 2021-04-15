@@ -89,8 +89,8 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     inode* nn = get_inode(directory_lookup(get_inode(0), path)); // basically depth of 2 now
 
     void* page = pages_get_page(nn->ptrs[0]);
-    int num_entries = *(int*)page;
-    direntry* dd = (direntry*)(page + sizeof(int));
+    int num_entries = nn->size / sizeof(direntry);
+    direntry* dd = (direntry*)(page);
 
     printf("%d entries in %s\n", num_entries, path);
 
@@ -221,6 +221,7 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
     free(dir);
 
     int inum = directory_lookup(get_inode(dir_inum), path);
+
     if (inum != -1) {
         inode* nn = get_inode(inum);
         char* data = (char*)(pages_get_page(nn->ptrs[0]) + offset);
@@ -246,7 +247,7 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
     int inum = directory_lookup(get_inode(dir_inum), path);
     if (inum != -1) {
         inode* nn = get_inode(inum);
-        nn->size = max(size + offset, nn->size);
+        nn->size += size;
         char* data = (char*)(pages_get_page(nn->ptrs[0]) + offset);
         memcpy(data, buf, size);
         printf("wrote: \"%s\"\n", data);
