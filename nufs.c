@@ -128,9 +128,15 @@ nufs_unlink(const char *path)
 int
 nufs_link(const char *from, const char *to)
 {
-    int rv = -1;
+    int rv = 0;
+    // directory lookup, get inode from.
+    // directory lookup to, add direntry and set inum to inum of from.
+    inode* root = get_inode(0);
+    int tnum = directory_lookup(root, to);
+    assert(fnum != -1);
+    directory_put(root, from, fnum);
     printf("link(%s => %s) -> %d\n", from, to, rv);
-	return rv;
+    return rv;
 }
 
 int
