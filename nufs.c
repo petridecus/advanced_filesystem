@@ -199,8 +199,22 @@ nufs_link(const char *from, const char *to)
 int
 nufs_rmdir(const char *path)
 {
-    int rv = -1;
+    int rv = 0;
+    int dnum = directory_lookup(get_inode(0), path);
+    inode* dnode = get_inode(dnum);
+    int num_entries = dnode->size / sizeof(direntry);
+    void* direntries = pages_get_page(dnode->ptrs[0]);
+    for (int ii = 0; ii < num_entries; ii++) {
+	direntry* ent = (direntry*)(direntries + ii*sizeof(direntry));
+	directory_delete(dnode, ent->name);
+    }
     printf("rmdir(%s) -> %d\n", path, rv);
+    char* dir = get_dir(path);
+    int pnum = directory_lookup(get_inode(0), dir);
+    inode* pnode = get_inode(pnum);
+    directory_delete(pnode, path);
+    free(dir);
+
     return rv;
 }
 
@@ -297,6 +311,7 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
 int
 nufs_utimens(const char* path, const struct timespec ts[2])
 {
+    printf("ts[0] %, ts[1] %");
     printf("utimens(%s) -> %d\n", path, -1);
     return 0;
 }
