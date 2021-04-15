@@ -22,6 +22,8 @@ typedef struct direntry {
 // should only be called once
 void directory_init();
 
+char* get_dir(const char* path);
+
 /**
  * Searches for the fiven file path
  * in the root directory.

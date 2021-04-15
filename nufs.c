@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <bsd/string.h>
 #include <assert.h>
+#include <libgen.h>
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
@@ -32,9 +33,25 @@ nufs_access(const char *path, int mask)
 int
 nufs_getattr(const char *path, struct stat *st)
 {
-    // NOTE changed this function to just search thru root for hw10
-    inode* root = get_inode(0);
-    int inum = directory_lookup(root, path);
+    // first check that the directory is real
+    char* dir = get_dir(path);
+    int dir_inum = directory_lookup(get_inode(0), dir);
+    
+    if (dir_inum < 0) {
+        printf("%s isn't a valid directory\n", dir);
+        return -ENOENT;
+    }
+
+    printf("%s was a valid directory!\n", dir);
+
+    free(dir);
+    inode* dd = get_inode(dir_inum);
+    int inum = directory_lookup(dd, path);
+    
+    if (inum < 0) {
+        printf("file %s doesn't exist\n", path);
+        return -ENOENT;
+    }    
 
     inode* nn = get_inode(inum);
     st->st_mode = nn->mode;
@@ -58,15 +75,24 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     int rv;
 
     // NOTE hard coding readdir to root for hw10
-    rv = nufs_getattr("/", &st);
+    rv = nufs_getattr(path, &st);
     if (rv < 0) return rv;
-    filler(buf, ".", &st, rv);
 
-    inode* nn = get_inode(0);
+    filler(buf, ".", &st, rv);
+    if (strcmp(path, "/")) {
+        rv = nufs_getattr("/", &st);
+        filler(buf, "..", &st, rv);
+    }
+
+    printf("in readdir, successfully ran getattr for %s\n", path);
+
+    inode* nn = get_inode(directory_lookup(get_inode(0), path)); // basically depth of 2 now
 
     void* page = pages_get_page(nn->ptrs[0]);
     int num_entries = nn->size / sizeof(direntry);
     direntry* dd = (direntry*)(page);
+
+    printf("%d entries in %s\n", num_entries, path);
 
     for (int ii = 0; ii < num_entries; ++ii) {
 	    printf("readdir reaching %s\n", dd->name);
@@ -75,11 +101,12 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	
 	    // need to strip dir path from files in buffer
 	    // as of now it's always just the "/" character
-	    char relative_path[48];
-	    for (size_t ii = 0; ii <= strlen(dd->name); ++ii)
-	        relative_path[ii] = dd->name[ii + strlen(path)];
-        
-	    filler(buf, relative_path, &st, rv);
+	    char* name_tmp = strdup(dd->name);
+        char* base = basename(name_tmp);
+
+        printf("filling info for file %s\n", base);
+	    filler(buf, base, &st, rv);
+        free(name_tmp);
         ++dd;
     }
 
@@ -94,14 +121,21 @@ nufs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
     int inum = alloc_inode(); // NOTE - ptr page also allocated in alloc_inode
 
+    char* dir = get_dir(path);
+    int dir_inum = directory_lookup(get_inode(0), dir);
+    if (dir_inum < 0) {
+        puts("trying to add something to an invalid dirctory");
+        return -ENOENT;
+    }
+
     inode* nn = get_inode(inum);
     nn->refs = 1;
-    nn->size = 0;
+    nn->size = S_ISDIR(mode) ? 4096 : 0;
     nn->mode = mode;
 
     // NOTE putting all new files in root directory for hw10
-    inode* rnode = get_inode(0);
-    int rv = directory_put(rnode, path, inum);
+    inode* dd = get_inode(dir_inum);
+    int rv = directory_put(dd, path, inum);
 
     printf("mknod(%s, %04o) -> %d (inum %d)\n", path, mode, rv, inum);
     return 0;
@@ -187,8 +221,13 @@ nufs_open(const char *path, struct fuse_file_info *fi)
 int
 nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    inode* root = get_inode(0);
-    int inum = directory_lookup(root, path);
+    char* dir = get_dir(path);
+    int dir_inum = directory_lookup(get_inode(0), dir);
+    if (dir_inum == -1) return -ENOENT;
+    free(dir);
+
+    int inum = directory_lookup(get_inode(dir_inum), path);
+
     if (inum != -1) {
         inode* nn = get_inode(inum);
         char* data = (char*)(pages_get_page(nn->ptrs[0]) + offset);
@@ -205,8 +244,13 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
 int
 nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    inode* root = get_inode(0);
-    int inum = directory_lookup(root, path);
+    puts("entering write");
+    char* dir = get_dir(path);
+    int dir_inum = directory_lookup(get_inode(0), dir);
+    if (dir_inum == -1) return -ENOENT;
+    free(dir);
+
+    int inum = directory_lookup(get_inode(dir_inum), path);
     if (inum != -1) {
         inode* nn = get_inode(inum);
         nn->size += size;
