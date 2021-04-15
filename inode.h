@@ -31,6 +31,10 @@ inode* get_inode(int inum);
  */
 int alloc_inode();
 
+int inode_grow(inode* nn, int size);
+
+int inode_shrink(inode* nn, int size);
+
 /**
  * Frees the inode with the given inum.
  * Does so by clearing the field in the bitmap,
@@ -38,12 +42,6 @@ int alloc_inode();
  * NOTE - added the inum field, it wasn't there in the starter code.
  */
 void free_inode(int inum); // NOTE i added the inum
-
-/**
- * Sets the time field of the given inode
- * based on the given timespec.
- */
-void inode_set_time(inode* nn, struct timespec tt);
 
 /**
  * Currently ignores fpn and returns the singular

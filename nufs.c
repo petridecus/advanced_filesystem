@@ -224,9 +224,11 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
 
     if (inum != -1) {
         inode* nn = get_inode(inum);
-        char* data = (char*)(pages_get_page(nn->ptrs[0]) + offset);
+        int page_offset = offset % 4096;
+        int page_num = offset / 4096;
+
+        char* data = (char*)((uintptr_t)pages_get_page(nn->ptrs[page_num]) + page_offset);
         memcpy(buf, data, size);
-        printf("reading: \"%s\"\n", buf);
     }
 
     printf("read(%s, %ld bytes, @+%ld) -> %d\n", path, size, offset, (int)size);
@@ -238,22 +240,26 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
 int
 nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    puts("entering write");
     char* dir = get_dir(path);
     int dir_inum = directory_lookup(get_inode(0), dir);
     if (dir_inum == -1) return -ENOENT;
     free(dir);
 
     int inum = directory_lookup(get_inode(dir_inum), path);
+
     if (inum != -1) {
         inode* nn = get_inode(inum);
-        nn->size += size;
-        char* data = (char*)(pages_get_page(nn->ptrs[0]) + offset);
+        int page_offset = offset % 4096;
+        int page_num = offset / 4096;
+        
+        if (size + offset > nn->size) inode_grow(nn, size + offset);
+        else if (size + offset < nn->size) inode_shrink(nn, size + offset);
+
+        char* data = (char*)(pages_get_page(nn->ptrs[page_num]) + page_offset);
         memcpy(data, buf, size);
-        printf("wrote: \"%s\"\n", data);
     }
 
-    printf("write(%s, %ld bytes, @+%ld) -> %d\n", path, size, offset, (int)size);
+    printf("read(%s, %ld bytes, @+%ld) -> %d\n", path, size, offset, (int)size);
     if (inum == -1) return -ENOENT;
     return (int)size;
 }
