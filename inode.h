@@ -11,8 +11,8 @@ typedef struct inode {
     int refs; // reference count
     int mode; // permission & type
     int size; // bytes
-    int ptrs[10]; // direct pointer, only using 1 for hw10
-    int iptrs; // only one is necessary but 2 makes an even 64 bytes
+    int ptrs[10]; // direct pointers
+    int iptrs; 
     int ts[2];
 } inode;
 
@@ -31,8 +31,14 @@ inode* get_inode(int inum);
  */
 int alloc_inode();
 
+/**
+ * Grows size of node nn to given size and allocates pages accordingly.
+ */
 int inode_grow(inode* nn, int size);
 
+/**
+ * Shrinks size of node nn to given size and deallocates pages accordingly.
+ */
 int inode_shrink(inode* nn, int size);
 
 /**
@@ -42,11 +48,5 @@ int inode_shrink(inode* nn, int size);
  * NOTE - added the inum field, it wasn't there in the starter code.
  */
 void free_inode(int inum); // NOTE i added the inum
-
-/**
- * Currently ignores fpn and returns the singular
- * ptr of this inode. Will have to change for ch03.
- */
-int inode_get_pnum(inode* node, int fpn);
 
 #endif

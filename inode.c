@@ -19,7 +19,6 @@ print_inode(inode* node) {
 
 inode*
 get_inode(int inum) {
-    printf("trying to get inode %d\n", inum);
     if (inum > MAX_INODES) 
 	    puts("there's not even supposed to be that many dude");
     
@@ -30,18 +29,13 @@ int
 alloc_inode() {
     void* ibm = get_inode_bitmap();
     
-    puts("inode bitmap:");
-    bitmap_print(ibm, 128);
-    puts("pages bitmap:");
-    bitmap_print(get_pages_bitmap(), 128);
-
     for (int ii = 0; ii < MAX_INODES; ++ii) {
         if (bitmap_get(ibm, ii) == 0) {
             bitmap_set(ibm, ii, 1);
-	        inode* nn = get_inode(ii);
+	    inode* nn = get_inode(ii);
             nn->size = 0;
     	    nn->refs = 1;
-	        printf("+ alloc_inode -> %d\n", ii);
+	    printf("+ alloc_inode -> %d\n", ii);
             return ii;
         }
     }
@@ -105,12 +99,9 @@ inode_shrink(inode* nn, int size) {
     return 0;
 }
 
-// NOTE - only one ptr per node for hw10
 int
 inode_get_pnum(inode* node, int fpn) {
     assert(fpn < DIRECT_PAGES);
         return node->ptrs[fpn];
-
-    // need case for indirect pointers
     return -1;
 }

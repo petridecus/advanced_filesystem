@@ -40,10 +40,6 @@ nufs_getattr(const char *path, struct stat *st)
         printf("%s isn't in a valid directory\n", path);
         return -ENOENT;
     }
-
-    printf("%s was in a valid directory!\n", path);
-
-    // free(dir);
     
     inode* dd = get_inode(dir_inum);
     int inum = directory_lookup(dd, path);
@@ -57,8 +53,7 @@ nufs_getattr(const char *path, struct stat *st)
     st->st_mode = nn->mode;
     st->st_size = nn->size;
     st->st_uid = getuid();
-    st->st_nlink = nn->refs; // TODO make sure to keep track of refs throughout.
-
+    st->st_nlink = nn->refs; 
     // set time specs
     st->st_atim.tv_sec = (time_t) nn->ts[0];
     st->st_mtim.tv_sec = (time_t) nn->ts[1];
@@ -80,11 +75,9 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     struct stat st;
     int rv;
 
-    // NOTE hard coding readdir to root for hw10
     rv = nufs_getattr(path, &st);
     if (rv < 0) return rv;
 
-    printf("nufs_readdir(), successfully ran getattr for %s\n", path);
     filler(buf, ".", &st, rv);
 
     int dir_inum = tree_lookup(path);
@@ -103,10 +96,7 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     int num_entries = nn->size / sizeof(direntry);
     direntry* dd = (direntry*)(page);
 
-    printf("%d entries in %s\n", num_entries, path);
-
     for (int ii = 0; ii < num_entries; ++ii) {
-	printf("readdir reaching %s\n", dd->name);
 	rv = nufs_getattr(dd->name, &st);
 	if (rv < 0) return rv;
 	
@@ -116,7 +106,6 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         memcpy(name_tmp, dd->name, strlen(dd->name) + 1);
         char* base = basename(name_tmp);
 
-        printf("filling info for file %s\n", base);
 	filler(buf, base, &st, rv);
         free(name_tmp);
         ++dd;
@@ -131,10 +120,10 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 int
 nufs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-    int inum = alloc_inode(); // NOTE - ptr page no longer allocated in alloc_inode
+    int inum = alloc_inode(); 
 
-    // char* dir = get_dir(path);
-    int dir_inum = tree_lookup(path);  //directory_lookup(get_inode(0), dir);
+    int dir_inum = tree_lookup(path);  
+
     if (dir_inum < 0) {
         puts("trying to add something to an invalid dirctory");
         return -ENOENT;
@@ -143,7 +132,6 @@ nufs_mknod(const char *path, mode_t mode, dev_t rdev)
     inode* nn = get_inode(inum);
     nn->mode = mode;
 
-    // NOTE putting all new files in root directory for hw10
     inode* dd = get_inode(dir_inum);
     int rv = directory_put(dd, path, inum);
 
@@ -165,11 +153,9 @@ int
 nufs_unlink(const char *path)
 {
     int rv = 0;
-    // char* dir = get_dir(path);
-    int inum = tree_lookup(path); // directory_lookup(get_inode(0), dir);
+    int inum = tree_lookup(path);
     inode* node = get_inode(inum);
     directory_delete(node, path);
-    // free(dir);
     printf("unlink(%s) -> %d\n", path, rv);
     return rv;
 }
@@ -177,28 +163,83 @@ nufs_unlink(const char *path)
 int
 nufs_link(const char *from, const char *to)
 {
-    printf("from: %s, to: %s\n", from, to);
     int rv = 0;
-    // directory lookup, get inode from.
-    // directory lookup to, add direntry and set inum to inum of from.
-    // char* dir = get_dir(from);
-    int dnum = tree_lookup(from); // directory_lookup(get_inode(0), dir);
+    int dnum = tree_lookup(from); 
     inode* dnode = get_inode(dnum);
-    // free(dir);
 
     int fnum = directory_lookup(dnode, from);
     assert(fnum != -1);
     inode* fnode = get_inode(fnum);
     fnode->refs++;
 
-    // dir = get_dir(to);
-    dnum = tree_lookup(to); // directory_lookup(get_inode(0), dir);
+    dnum = tree_lookup(to);
     dnode = get_inode(dnum);
-    // free(dir);
 
     directory_put(dnode, to, fnum);
     printf("link(%s => %s) -> %d\n", from, to, rv);
     return rv;
+}
+
+int
+nufs_symlink(const char* from, const char* to)
+{
+    int rv;
+
+    const char* fpath = from + 3;
+
+    // gets the inode of the from file/dir
+    int dnum = tree_lookup(fpath);
+    int inum = directory_lookup(get_inode(dnum), fpath);
+    inode* fnode = get_inode(inum);
+
+    if (inum < 0) {
+	printf("trying to link from an invalid directory\n");
+	return -ENOENT;
+    }
+
+    // create the new inode for the symlink file/dir
+    int tnum = alloc_inode();
+    int pnum = alloc_page();
+    inode* tnode = get_inode(tnum);
+    tnode->size = strlen(fpath);
+    tnode->refs++;
+    tnode->ptrs[0] = pnum;
+    tnode->mode = S_IFLNK;
+    void* page = pages_get_page(pnum);
+    memcpy(page, fpath + 1, strlen(fpath) - 1);
+
+    // put the new file in the intended directory
+    int ddnum = tree_lookup(to);
+    inode* dd = get_inode(ddnum);
+    rv = directory_put(dd, to, tnum);
+
+    if (rv < 0) {
+	return -errno;
+    }
+
+    printf("symlink(), creating link from %s to %s\n", fpath, to);
+
+    return 0;
+}
+
+int
+nufs_readlink(const char* path, char* buf, size_t size)
+{        
+    int dnum = tree_lookup(path);
+    int inum = directory_lookup(get_inode(dnum), path);
+    inode* lnode = get_inode(inum);
+    char* fpath = (char*) pages_get_page(lnode->ptrs[0]);
+    
+    if (lnode->size < size) {
+	strncpy(buf, fpath, lnode->size);
+        buf[lnode->size] = '\0';
+    } else {
+	strncpy(buf, fpath, size);
+        buf[size] = '\0';
+    }  
+
+    printf("readlink() -> %s\n, size %d", path, size);
+    return 0;
 }
 
 int
@@ -266,7 +307,7 @@ nufs_open(const char *path, struct fuse_file_info *fi)
 int
 nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    int dir_inum = tree_lookup(path); // directory_lookup(get_inode(0), dir);
+    int dir_inum = tree_lookup(path); 
     if (dir_inum == -1) return -ENOENT;
 
     int inum = directory_lookup(get_inode(dir_inum), path);
@@ -289,7 +330,7 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
 int
 nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    int dir_inum = tree_lookup(path); // directory_lookup(get_inode(0), dir);
+    int dir_inum = tree_lookup(path); 
     if (dir_inum == -1) return -ENOENT;
 
     int inum = directory_lookup(get_inode(dir_inum), path);
@@ -315,7 +356,6 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
 int
 nufs_utimens(const char* path, const struct timespec ts[2])
 {
-    printf("utimens(%s) -> %d\n", path, -1);
     int inum = tree_lookup(path);
     int fnum = directory_lookup(get_inode(inum), path);
     inode* fnode = get_inode(fnum);
@@ -323,6 +363,8 @@ nufs_utimens(const char* path, const struct timespec ts[2])
     fnode->ts[0] = (int)(ts[0].tv_sec);
     // setting last mod time
     fnode->ts[1] = (int)(ts[1].tv_sec);
+
+    printf("utimens(%s) -> %d\n", path, 0);
     return 0;
 }
 
@@ -356,6 +398,8 @@ nufs_init_ops(struct fuse_operations* ops)
     ops->write    = nufs_write;
     ops->utimens  = nufs_utimens;
     ops->ioctl    = nufs_ioctl;
+    ops->symlink  = nufs_symlink;
+    ops->readlink = nufs_readlink;
 };
 
 struct fuse_operations nufs_ops;

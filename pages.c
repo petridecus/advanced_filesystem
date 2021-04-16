@@ -75,7 +75,7 @@ get_pages_bitmap()
 void*
 get_inode_bitmap()
 {
-    return (void*)pages_get_page(0); // NOTE switched to make inode bitmap first, since it's smaller
+    return (void*)pages_get_page(0); 
 }
 
 int

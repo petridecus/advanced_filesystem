@@ -3,7 +3,7 @@
 #ifndef BITMAP_H
 #define BITMAP_H
 
-#include<stdlib.h>
+#include <stdlib.h>
 
 /**
  * Returns the 'ii' bit of the given bitmap.

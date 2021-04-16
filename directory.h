@@ -22,34 +22,35 @@ typedef struct direntry {
 // should only be called once
 void directory_init();
 
-char* get_dir(const char* path);
-
 /**
  * Searches for the fiven file path
- * in the root directory.
+ * in the directory pointed to by dd.
  */
 int directory_lookup(inode* dd, const char* name);
 
+/**
+ * Returns the inode number of the directory that contains the given path.
+ * Note: does nothing to check if the last part of the path is real (done by
+ * directory_lookup).
+ */
 int tree_lookup(const char* path);
 
 /**
  * Creates an entry for the given file path in
- * the root directory.
+ * the directory pointed to by dd.
  */
 int directory_put(inode* dd, const char* name, int inum);
 
 /**
- * Locates the entry with the name "from" in the root directory
- * and changes the entry name from "from" to "to"
+ * Locates the entry with the name "from"
+ * and changes the entry name from "from" to "to".
  */
 int rename_entry(const char* from, const char* to);
 
 /**
- * Locates the entry with the given name in the root
- * directory and removes it, in addition to freeing the
- * node. 
- * Currently working under the assumption that a file won't 
- * have any additional refs, since there's only 1 dir.
+ * Locates the entry with the given name in the directory pointed
+ * to by dd and removes it, in addition to freeing the node if it
+ * has no more refs. 
  */
 int directory_delete(inode* dd, const char* path);
 

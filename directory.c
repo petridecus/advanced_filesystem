@@ -44,12 +44,9 @@ tree_lookup(const char* path) {
     memcpy(dir, "/", 2);
     inode* curr_inode = get_inode(0);
 
-    printf("in tree_lookup, starting search in dir %s\n", dir);
-
     while (path_dirs->next) {
         char* subdir = malloc(48 * sizeof(char));
         memcpy(subdir, dir, strlen(dir) + 1);
-        printf("setting subdir to %s + %s\n", dir, path_dirs->data);
 
         if (strlen(subdir) > 1) strcat(subdir, "/");
         strcat(subdir, path_dirs->data);
@@ -63,20 +60,20 @@ tree_lookup(const char* path) {
             return rv;
         }
 
-	    curr_inode = get_inode(rv);
+	curr_inode = get_inode(rv);
 
-	    if (!S_ISDIR(curr_inode->mode)) {
-	        free(dir);
-	        free(subdir);
-	        s_free(orig_dirs);
-	        break;
-	    }
-	
-	    ret = rv;
-
-	    path_dirs = path_dirs->next;
+	if (!S_ISDIR(curr_inode->mode)) {
 	    free(dir);
-	    dir = subdir;
+	    free(subdir);
+	    s_free(orig_dirs);
+	    break;
+	}
+	
+	ret = rv;
+
+	path_dirs = path_dirs->next;
+	free(dir);
+	dir = subdir;
     }
 
     s_free(orig_dirs);
@@ -104,8 +101,6 @@ directory_lookup(inode* dd, const char *name) {
 int
 directory_put(inode* dd, const char* name, int inum) {
     int num_entries = dd->size / sizeof(direntry);
-	
-    printf("currently %d entries in dir\n", num_entries);
 
     if (dd->ptrs[0] == 0) dd->ptrs[0] = alloc_page();
     void* dir_page = pages_get_page(dd->ptrs[0]);
@@ -114,8 +109,6 @@ directory_put(inode* dd, const char* name, int inum) {
         printf("num entries is garbage: %d\n", num_entries);
         return -1;
     }
-
-    printf("getting to point where entry %d is being created\n", num_entries);
 
     direntry* new_entry = (direntry*)(dir_page + (num_entries)*sizeof(direntry));
     strcpy(new_entry->name, name);
@@ -137,7 +130,6 @@ rename_entry(const char* from, const char* to) {
     for (int ii = 0; ii < num_entries; ++ii) {
         direntry* curr_entry = (direntry*)((uintptr_t)dir_page + ii * sizeof(direntry));
     	if (!strcmp(curr_entry->name, from)) {
-	    // memset(curr_entry->name, 0, 48);
 	    strcpy(curr_entry->name, to);
             return 0;
         }
@@ -155,19 +147,17 @@ directory_delete(inode* dd, const char* path) {
     for (int ii = 0; ii < num_entries; ++ii) {
         direntry* curr_entry = (direntry*)((uintptr_t)dir_page + ii * sizeof(direntry));
     	if (strcmp(curr_entry->name, path) == 0) {
-	        inode* deleted = get_inode(curr_entry->inum);
-	        deleted->refs -= 1;
+	    inode* deleted = get_inode(curr_entry->inum);
+	    deleted->refs -= 1;
 
-	        if (deleted->refs == 0) {
+	    if (deleted->refs == 0) {
                 free_inode(curr_entry->inum);
-	        }
+	    }
             
-	        for (int jj = ii; jj < num_entries; ++jj) {
-		        direntry* curr_entry = (direntry*)(dir_page + jj * sizeof(direntry));
-		        direntry* next_entry = (direntry*)((uintptr_t)curr_entry + sizeof(direntry));
-
-		        // memset((void*)curr_entry, 0, sizeof(direntry));
-                memcpy((void*)curr_entry, (void*)next_entry, sizeof(direntry));
+	    for (int jj = ii; jj < num_entries; ++jj) {
+		direntry* curr_entry = (direntry*)(dir_page + jj * sizeof(direntry));
+		direntry* next_entry = (direntry*)((uintptr_t)curr_entry + sizeof(direntry));
+               	memcpy((void*)curr_entry, (void*)next_entry, sizeof(direntry));
             }
 
             dd->size -= sizeof(direntry);
