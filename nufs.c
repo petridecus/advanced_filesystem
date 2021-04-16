@@ -110,11 +110,12 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	
 	// need to strip dir path from files in buffer
 	// as of now it's always just the "/" character
-	char* name_tmp = strdup(dd->name);
+	char* name_tmp = malloc(48 * sizeof(char));
+        memcpy(name_tmp, dd->name, strlen(dd->name) + 1);
         char* base = basename(name_tmp);
 
         printf("filling info for file %s\n", base);
-	    filler(buf, base, &st, rv);
+	filler(buf, base, &st, rv);
         free(name_tmp);
         ++dd;
     }
@@ -260,10 +261,8 @@ nufs_open(const char *path, struct fuse_file_info *fi)
 int
 nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    // char* dir = get_dir(path);
     int dir_inum = tree_lookup(path); // directory_lookup(get_inode(0), dir);
     if (dir_inum == -1) return -ENOENT;
-    // free(dir);
 
     int inum = directory_lookup(get_inode(dir_inum), path);
 
@@ -285,10 +284,8 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
 int
 nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    // char* dir = get_dir(path);
     int dir_inum = tree_lookup(path); // directory_lookup(get_inode(0), dir);
     if (dir_inum == -1) return -ENOENT;
-    // free(dir);
 
     int inum = directory_lookup(get_inode(dir_inum), path);
 

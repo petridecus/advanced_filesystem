@@ -69,7 +69,7 @@ pages_get_page(int pnum)
 void*
 get_pages_bitmap()
 {
-    return (void*)(pages_get_page(0) + 4 * sizeof(long)); // inode bitmap will never be > 128 bits
+    return (void*)(pages_get_page(0) + 128); // inode bitmap will never be > 128 bits
 }
 
 void*
