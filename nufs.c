@@ -58,6 +58,8 @@ nufs_getattr(const char *path, struct stat *st)
     st->st_size = nn->size;
     st->st_uid = getuid();
     st->st_nlink = nn->refs; // TODO make sure to keep track of refs throughout.
+    st->st_atim.tv_sec = (time_t) nn->ts[0];
+    st->st_mtim.tv_sec = (time_t) nn->ts[1];
 
     printf("getattr(%s) [%d] -> {mode: %04o, size: %ld}\n", 
 		    path, inum, st->st_mode, st->st_size);
@@ -311,7 +313,13 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
 int
 nufs_utimens(const char* path, const struct timespec ts[2])
 {
-    printf("ts[0] %, ts[1] %");
+    int inum = tree_lookup(path);
+    int fnum = directory_lookup(get_inode(inum), path);
+    inode* fnode = get_inode(fnum);
+    // setting last access time
+    fnode->ts[0] = (int)(ts[0].tv_sec);
+    // setting the last modification time
+    fnode->ts[1] = (int)(ts[1].tv_sec);
     printf("utimens(%s) -> %d\n", path, -1);
     return 0;
 }
