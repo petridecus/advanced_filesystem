@@ -11,9 +11,6 @@
 
 void
 directory_init() {
-    // NOTE something is going wrong when making 10+ files after chaning page structure
-    // was only having issues at 30+ before change...
-
     int existed = bitmap_get(get_pages_bitmap(), 3);
     if (existed) return;
 
@@ -21,10 +18,7 @@ directory_init() {
 
     inode* rnode = get_inode(0);
 
-    // TODO debug this
-    // rnode->refs = 1;
-    // rnode->size = 4096;
-    // rnode->pages = 1;
+    rnode->refs = 1;
     rnode->mode = 040755;
     rnode->ptrs[0] = 3;
 }
@@ -83,9 +77,13 @@ directory_put(inode* dd, const char* name, int inum) {
 
 int
 rename_entry(const char* from, const char* to) {
-    void* dir_page = pages_get_page(3); // hard coded to root
-    inode* root = get_inode(0);
-    int num_entries = root->size / sizeof(direntry);
+    char* dir = get_dir(from);
+    int dnum = directory_lookup(get_inode(0), dir);
+    inode* dd = get_inode(dnum);
+    free(dir);
+
+    void* dir_page = pages_get_page(dd->ptrs[0]);
+    int num_entries = dd->size / sizeof(direntry);
 
     for (int ii = 0; ii < num_entries; ++ii) {
         direntry* curr_entry = (direntry*)(dir_page + ii * sizeof(direntry));

@@ -169,12 +169,22 @@ nufs_link(const char *from, const char *to)
     int rv = 0;
     // directory lookup, get inode from.
     // directory lookup to, add direntry and set inum to inum of from.
-    inode* root = get_inode(0);
-    int fnum = directory_lookup(root, from);
+    char* dir = get_dir(from);
+    int dnum = directory_lookup(get_inode(0), dir);
+    inode* dnode = get_inode(dnum);
+    free(dir);
+
+    int fnum = directory_lookup(dnode, from);
+    assert(fnum != -1);
     inode* fnode = get_inode(fnum);
     fnode->refs++;
-    assert(fnum != -1);
-    directory_put(root, to, fnum);
+
+    dir = get_dir(to);
+    dnum = directory_lookup(get_inode(0), dir);
+    dnode = get_inode(dnum);
+    free(dir);
+
+    directory_put(dnode, to, fnum);
     printf("link(%s => %s) -> %d\n", from, to, rv);
     return rv;
 }
