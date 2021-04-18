@@ -51,17 +51,19 @@ nufs_getattr(const char *path, struct stat *st)
     if (inum < 0) {
         printf("file %s doesn't exist\n", path);
         return -ENOENT;
-    }    
+    } 
 
     inode* nn = get_inode(inum);
     st->st_mode = nn->mode;
     st->st_size = nn->size;
     st->st_uid = getuid();
+    st->st_nlink = nn->refs; // TODO make sure to keep track of refs throughout.
 
     printf("getattr(%s) [%d] -> {mode: %04o, size: %ld}\n", 
 		    path, inum, st->st_mode, st->st_size);
 
-    if (inum == -1) return -ENOENT;
+    if (inum < 0) return -ENOENT;
+    
     return 0;
 }
 
@@ -78,13 +80,13 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     rv = nufs_getattr(path, &st);
     if (rv < 0) return rv;
 
+    printf("nufs_readdir(), successfully ran getattr for %s\n", path);
+
     filler(buf, ".", &st, rv);
     if (strcmp(path, "/")) {
         rv = nufs_getattr("/", &st);
-        filler(buf, "..", &st, rv);
+        //filler(buf, "..", &st, rv);
     }
-
-    printf("in readdir, successfully ran getattr for %s\n", path);
 
     inode* nn = get_inode(directory_lookup(get_inode(0), path)); // basically depth of 2 now
 
@@ -130,7 +132,7 @@ nufs_mknod(const char *path, mode_t mode, dev_t rdev)
 
     inode* nn = get_inode(inum);
     nn->refs = 1;
-    nn->size = S_ISDIR(mode) ? 4096 : 0;
+    nn->size = 0;
     nn->mode = mode;
 
     // NOTE putting all new files in root directory for hw10
@@ -154,7 +156,12 @@ nufs_mkdir(const char *path, mode_t mode)
 int
 nufs_unlink(const char *path)
 {
-    int rv = remove_file(path);
+    int rv = 0;
+    char* dir = get_dir(path);
+    int inum = directory_lookup(get_inode(0), dir);
+    inode* node = get_inode(inum);
+    directory_delete(node, path);
+    free(dir);
     printf("unlink(%s) -> %d\n", path, rv);
     return rv;
 }
@@ -162,9 +169,18 @@ nufs_unlink(const char *path)
 int
 nufs_link(const char *from, const char *to)
 {
-    int rv = -1;
+    printf("from: %s, to: %s\n", from, to);
+    int rv = 0;
+    // directory lookup, get inode from.
+    // directory lookup to, add direntry and set inum to inum of from.
+    inode* root = get_inode(0);
+    int fnum = directory_lookup(root, from);
+    inode* fnode = get_inode(fnum);
+    fnode->refs++;
+    assert(fnum != -1);
+    directory_put(root, to, fnum);
     printf("link(%s => %s) -> %d\n", from, to, rv);
-	return rv;
+    return rv;
 }
 
 int
@@ -269,7 +285,7 @@ int
 nufs_utimens(const char* path, const struct timespec ts[2])
 {
     printf("utimens(%s) -> %d\n", path, -1);
-    return -1;
+    return 0;
 }
 
 // Extended operations

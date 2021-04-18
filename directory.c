@@ -40,7 +40,7 @@ get_dir(const char* path) {
 }
 
 int 
-directory_lookup(inode*dd, const char *name) {
+directory_lookup(inode* dd, const char *name) {
     if (strcmp(name, "/") == 0) return 0;
 
     int num_entries = dd->size / sizeof(direntry); // hard coded to root
@@ -87,7 +87,7 @@ rename_entry(const char* from, const char* to) {
     for (int ii = 0; ii < num_entries; ++ii) {
         direntry* curr_entry = (direntry*)(dir_page + ii * sizeof(direntry));
     	if (!strcmp(curr_entry->name, from)) {
-	        strcpy(curr_entry->name, to);
+	    strcpy(curr_entry->name, to);
             return 0;
         }
     }
@@ -96,26 +96,30 @@ rename_entry(const char* from, const char* to) {
 }
 
 int
-remove_file(const char* path) {
-    void* dir_page = pages_get_page(3);
-    inode* root = get_inode(0);
-    int num_entries = root->size / sizeof(direntry);
+directory_delete(inode* dd, const char* path) {
+    int inum = dd->ptrs[0];
+    void* dir_page = pages_get_page(inum);
+    int num_entries = dd->size / sizeof(direntry);
 
     for (int ii = 0; ii < num_entries; ++ii) {
         direntry* curr_entry = (direntry*)(dir_page + ii * sizeof(direntry));
-    	if (!strcmp(curr_entry->name, path)) {
-            free_inode(curr_entry->inum);
+    	if (strcmp(curr_entry->name, path) == 0) {
+	    inode* deleted = get_inode(curr_entry->inum);
+	    deleted->refs -= 1;
+	    if (deleted->refs == 0) {
+                free_inode(curr_entry->inum);
+	    }
             
-	        for (int jj = ii; jj < num_entries; ++jj) {
-		        direntry* curr_entry = (direntry*)(dir_page + jj * sizeof(direntry));
-		        direntry* next_entry = curr_entry + 1;
+	    for (int jj = ii; jj < num_entries; ++jj) {
+		direntry* curr_entry = (direntry*)(dir_page + jj * sizeof(direntry));
+		direntry* next_entry = curr_entry + 1;
 
-		        memset(curr_entry->name, 0, strlen(curr_entry->name) + 1);
+		memset(curr_entry->name, 0, strlen(curr_entry->name) + 1);
                 strcpy(curr_entry->name, next_entry->name);
 		        curr_entry->inum = next_entry->inum;
             }
 
-            root->size -= sizeof(direntry);
+            dd->size -= sizeof(direntry);
             return 0;
         }
     }

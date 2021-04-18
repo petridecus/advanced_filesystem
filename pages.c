@@ -40,17 +40,13 @@ pages_init(const char* path)
     
     assert(pages_base != MAP_FAILED);
 
-    bitmap* pbm = get_pages_bitmap();
+    void* pbm = get_pages_bitmap();
 
     // if the bitmaps are already initialized, don't reset them
     if (!bitmap_get(pbm, 0)) {
-        pbm->num_words = 1;
-        bitmap_set(pbm, 0); // bitmap page
-        bitmap_set(pbm, 1); // inode page 1
-        bitmap_set(pbm, 2); // inode page 2
-
-        bitmap* ibm = get_inode_bitmap();
-        ibm->num_words = 1;
+        bitmap_set(pbm, 0, 1); // bitmap page
+        bitmap_set(pbm, 1, 1); // inode page 1
+        bitmap_set(pbm, 2, 1); // inode page 2
     }
 
     // will also check bitmaps before mutating base/root pages
@@ -70,27 +66,27 @@ pages_get_page(int pnum)
     return pages_base + 4096 * pnum;
 }
 
-bitmap*
+void*
 get_pages_bitmap()
 {
-    return (bitmap*)(pages_get_page(0) + 4 * sizeof(long)); // inode bitmap will never be > 128 bits
+    return (void*)(pages_get_page(0) + 4 * sizeof(long)); // inode bitmap will never be > 128 bits
 }
 
-bitmap*
+void*
 get_inode_bitmap()
 {
-    return (bitmap*)pages_get_page(0); // NOTE switched to make inode bitmap first, since it's smaller
+    return (void*)pages_get_page(0); // NOTE switched to make inode bitmap first, since it's smaller
 }
 
 int
 alloc_page()
 {
-    bitmap* pbm = get_pages_bitmap();
+    void* pbm = get_pages_bitmap();
 
     // page 0 is for bitmaps, pages 1 & 2 are for inodes
     for (int ii = 3; ii < PAGE_COUNT; ++ii) {
         if (!bitmap_get(pbm, ii)) {
-            bitmap_set(pbm, ii);
+            bitmap_set(pbm, ii, 1);
             printf("+ alloc_page() -> %d\n", ii);
             return ii;
         }
@@ -104,6 +100,6 @@ free_page(int pnum)
 {
     printf("+ free_page(%d)\n", pnum);
     void* pbm = get_pages_bitmap();
-    bitmap_clear(pbm, pnum);
+    bitmap_set(pbm, pnum, 0);
 }
 
