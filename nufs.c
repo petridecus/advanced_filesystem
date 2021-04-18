@@ -81,12 +81,7 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     if (rv < 0) return rv;
 
     printf("nufs_readdir(), successfully ran getattr for %s\n", path);
-
     filler(buf, ".", &st, rv);
-    if (strcmp(path, "/")) {
-        rv = nufs_getattr("/", &st);
-        //filler(buf, "..", &st, rv);
-    }
 
     inode* nn = get_inode(directory_lookup(get_inode(0), path)); // basically depth of 2 now
 
@@ -97,13 +92,13 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     printf("%d entries in %s\n", num_entries, path);
 
     for (int ii = 0; ii < num_entries; ++ii) {
-	    printf("readdir reaching %s\n", dd->name);
-	    rv = nufs_getattr(dd->name, &st);
-	    if (rv < 0) return rv;
+	printf("readdir reaching %s\n", dd->name);
+	rv = nufs_getattr(dd->name, &st);
+	if (rv < 0) return rv;
 	
-	    // need to strip dir path from files in buffer
-	    // as of now it's always just the "/" character
-	    char* name_tmp = strdup(dd->name);
+	// need to strip dir path from files in buffer
+	// as of now it's always just the "/" character
+	char* name_tmp = strdup(dd->name);
         char* base = basename(name_tmp);
 
         printf("filling info for file %s\n", base);
@@ -121,7 +116,7 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 int
 nufs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-    int inum = alloc_inode(); // NOTE - ptr page also allocated in alloc_inode
+    int inum = alloc_inode(); // NOTE - ptr page no longer allocated in alloc_inode
 
     char* dir = get_dir(path);
     int dir_inum = directory_lookup(get_inode(0), dir);
@@ -132,8 +127,9 @@ nufs_mknod(const char *path, mode_t mode, dev_t rdev)
 
     inode* nn = get_inode(inum);
     nn->refs = 1;
-    nn->size = 0;
     nn->mode = mode;
+    nn->size = 0;
+    nn->pages = 0;
 
     // NOTE putting all new files in root directory for hw10
     inode* dd = get_inode(dir_inum);
@@ -241,7 +237,7 @@ nufs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_fi
     if (inum != -1) {
         inode* nn = get_inode(inum);
         int page_offset = offset % 4096;
-        int page_num = offset / 4096;
+        int page_num = page_offset == 0 ? bytes_to_pages(offset) : bytes_to_pages(offset) - 1;
 
         char* data = (char*)((uintptr_t)pages_get_page(nn->ptrs[page_num]) + page_offset);
         memcpy(buf, data, size);
@@ -266,7 +262,7 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
     if (inum != -1) {
         inode* nn = get_inode(inum);
         int page_offset = offset % 4096;
-        int page_num = offset / 4096;
+        int page_num = page_offset == 0 ? bytes_to_pages(offset) : bytes_to_pages(offset) - 1;
         
         if (size + offset > (size_t)nn->size) inode_grow(nn, size + offset);
         else if (size + offset < (size_t)nn->size) inode_shrink(nn, size + offset);
@@ -275,7 +271,7 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
         memcpy(data, buf, size);
     }
 
-    printf("read(%s, %ld bytes, @+%ld) -> %d\n", path, size, offset, (int)size);
+    printf("write(%s, %ld bytes, @+%ld) -> %d\n", path, size, offset, (int)size);
     if (inum == -1) return -ENOENT;
     return (int)size;
 }

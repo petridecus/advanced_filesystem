@@ -99,6 +99,10 @@ void
 free_page(int pnum)
 {
     printf("+ free_page(%d)\n", pnum);
+
+    void* page = pages_get_page(pnum);
+    memset(page, 0, 4096);
+
     void* pbm = get_pages_bitmap();
     bitmap_set(pbm, pnum, 0);
 }

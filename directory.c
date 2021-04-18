@@ -17,16 +17,15 @@ directory_init() {
     int existed = bitmap_get(get_pages_bitmap(), 3);
     if (existed) return;
 
-    // TODO make sure pages 1 & 2 are actually being alloc'd for nodes
-    assert(alloc_page() == 3);
-    void* root = pages_get_page(3);
+    assert(alloc_page() == 3 && alloc_inode() == 0);
 
-    assert(alloc_inode() == 0);
     inode* rnode = get_inode(0);
 
-    rnode->refs = 1;
+    // TODO debug this
+    // rnode->refs = 1;
+    // rnode->size = 4096;
+    // rnode->pages = 1;
     rnode->mode = 040755;
-    rnode->size = 0;
     rnode->ptrs[0] = 3;
 }
 
@@ -59,16 +58,20 @@ directory_lookup(inode* dd, const char *name) {
 
 int
 directory_put(inode* dd, const char* name, int inum) {
+    int num_entries = dd->size / sizeof(direntry);
+	
+    printf("currently %d entries in dir\n", num_entries);
+
+    if (dd->ptrs[0] == 0) dd->ptrs[0] = alloc_page();
     void* dir_page = pages_get_page(dd->ptrs[0]);
 
-    int num_entries = dd->size / sizeof(direntry);
-    
     if (num_entries >= MAX_ENTRIES) {
         printf("num entries is garbage: %d\n", num_entries);
         return -1;
     }
 
-    puts("getting to point where entry is being created");
+    printf("getting to point where entry %d is being created\n", num_entries);
+
     direntry* new_entry = (direntry*)(dir_page + (num_entries)*sizeof(direntry));
     strcpy(new_entry->name, name);
     new_entry->inum = inum;

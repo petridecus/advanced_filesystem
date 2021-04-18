@@ -33,7 +33,8 @@ alloc_inode() {
         if (!bitmap_get(ibm, ii)) {
             bitmap_set(ibm, ii, 1);
 	        inode* nn = get_inode(ii);
-	        nn->ptrs[0] = alloc_page();
+            nn->size = 0;
+            nn->pages = 0;
             return ii;
         }
     }
@@ -51,29 +52,25 @@ free_inode(int inum) {
     for (int ii = 0; ii < nn->pages; ++ii)
         if (ii < DIRECT_PAGES) free_page(nn->ptrs[ii]);
     
-    // need to eventually clear indirect pointer as well...
-    
     bitmap_set(ibm, inum, 0);
 }
 
 int
 inode_grow(inode* nn, int size) {
     assert(size > nn->size);
-    
+
+    int new_num_pages = bytes_to_pages(size);
     nn->size = size;
 
-    int num_pages = bytes_to_pages(nn->size);
-    int new_num_pages = bytes_to_pages(size) + 1;
+    if (nn->pages == new_num_pages) return 0;
     
-    if (num_pages == new_num_pages) return 0;
-    
-    for (int ii = num_pages + 1; ii <= new_num_pages; ++ii) {
-        // TODO make sure this is proper indexing
-        nn->ptrs[ii] = alloc_page(); 
-        printf("allocated pate %d", nn->ptrs[ii]);
+    for (int ii = nn->pages; ii < new_num_pages; ++ii) {
+        nn->ptrs[ii] = alloc_page();
+        printf("allocated pate %d to inode's ptr %d\n", nn->ptrs[ii], ii);
     }
 
-    printf("grew from %d to %d pages\n", num_pages, new_num_pages);
+    printf("grew from %d to %d pages\n", nn->pages, new_num_pages);
+    nn->pages = new_num_pages;
 
     return 0;
 }
@@ -81,14 +78,16 @@ inode_grow(inode* nn, int size) {
 int
 inode_shrink(inode* nn, int size) {
     assert(size < nn->size);
-    int num_pages = bytes_to_pages(nn->size);
     int new_num_pages = bytes_to_pages(size);
 
-    if (num_pages == new_num_pages) return 0;
+    nn->size = size;
+    if (nn->pages == new_num_pages) return 0;
     
-    for (int ii = num_pages + 1; ii <= new_num_pages; ++ii) {
+    for (int ii = nn->pages; ii < new_num_pages; ++ii) {
         free_page(nn->ptrs[ii]);
     }
+
+    nn->pages = new_num_pages;
 
     return 0;
 }
