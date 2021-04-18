@@ -252,8 +252,8 @@ nufs_write(const char *path, const char *buf, size_t size, off_t offset, struct 
         int page_offset = offset % 4096;
         int page_num = offset / 4096;
         
-        if (size + offset > nn->size) inode_grow(nn, size + offset);
-        else if (size + offset < nn->size) inode_shrink(nn, size + offset);
+        if (size + offset > (size_t)nn->size) inode_grow(nn, size + offset);
+        else if (size + offset < (size_t)nn->size) inode_shrink(nn, size + offset);
 
         char* data = (char*)(pages_get_page(nn->ptrs[page_num]) + page_offset);
         memcpy(data, buf, size);
