@@ -30,6 +30,8 @@ char* get_dir(const char* path);
  */
 int directory_lookup(inode* dd, const char* name);
 
+int tree_lookup(const char* path);
+
 /**
  * Creates an entry for the given file path in
  * the root directory.

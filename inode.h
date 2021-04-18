@@ -10,10 +10,9 @@
 typedef struct inode {
     int refs; // reference count
     int mode; // permission & type
-    int size; // bytes
+    size_t size; // bytes
     int ptrs[10]; // direct pointer, only using 1 for hw10
     int iptrs[2]; // only one is necessary but 2 makes an even 64 bytes
-    int pages;
 } inode;
 
 /**

@@ -4,6 +4,8 @@
 #include <libgen.h>
 #include <errno.h>
 #include "directory.h"
+#include "slist.h"
+#include "util.h"
 
 #define MAX_ENTRIES 254 // (4096 - sizeof(int)) / sizeof(dirent)
 
@@ -17,8 +19,6 @@ directory_init() {
     assert(alloc_page() == 3 && alloc_inode() == 0);
 
     inode* rnode = get_inode(0);
-
-    rnode->refs = 1;
     rnode->mode = 040755;
     rnode->ptrs[0] = 3;
 }
@@ -30,6 +30,41 @@ get_dir(const char* path) {
     char* dir = strdup(dir_tmp);
     free(path_tmp);
     return dir;
+}
+
+int
+tree_lookup(const char* path) {
+    if (!strcmp(path, "/")) return 0;
+
+    int rv = 0;
+
+    slist* path_dirs = s_split(path, '/');
+    slist* orig_dirs = path_dirs;
+
+    path_dirs = path_dirs->next;
+
+    char* dir = malloc(strlen(path) * sizeof(char));
+    memcpy(dir, "/", 2);
+    inode* curr_inode = get_inode(0);
+
+    printf("in tree_lookup, starting search in dir %s\n", dir);
+
+    while (path_dirs->next) {
+    	char* subdir = strdup(dir);
+	printf("setting subdir to %s + %s", dir, path_dirs->data);
+    	strcat(subdir, path_dirs->data);
+	
+	rv = directory_lookup(curr_inode, subdir);
+	if (rv == -1) return rv;
+	curr_inode = get_inode(rv);
+
+	path_dirs = path_dirs->next;
+	free(dir);
+	dir = subdir;
+    }
+
+    free(dir);
+    return rv; 
 }
 
 int 

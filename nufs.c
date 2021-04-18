@@ -34,17 +34,17 @@ int
 nufs_getattr(const char *path, struct stat *st)
 {
     // first check that the directory is real
-    char* dir = get_dir(path);
-    int dir_inum = directory_lookup(get_inode(0), dir);
-    
+    int dir_inum = tree_lookup(path);
+
     if (dir_inum < 0) {
-        printf("%s isn't a valid directory\n", dir);
+        printf("%s isn't in a valid directory\n", path);
         return -ENOENT;
     }
 
-    printf("%s was a valid directory!\n", dir);
+    printf("%s was in a valid directory!\n", path);
 
-    free(dir);
+    // free(dir);
+    
     inode* dd = get_inode(dir_inum);
     int inum = directory_lookup(dd, path);
     
@@ -83,7 +83,17 @@ nufs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     printf("nufs_readdir(), successfully ran getattr for %s\n", path);
     filler(buf, ".", &st, rv);
 
-    inode* nn = get_inode(directory_lookup(get_inode(0), path)); // basically depth of 2 now
+    int dir_inum = tree_lookup(path);
+    if (dir_inum < 0) return -ENOENT;
+    inode* parent_dir = get_inode(dir_inum);
+    
+    int inum = directory_lookup(parent_dir, path);
+    if (inum < 0) {
+        puts("in readdir, parent dir was found but not actual dir");
+	return -ENOENT;
+    }
+
+    inode* nn = get_inode(inum);
 
     void* page = pages_get_page(nn->ptrs[0]);
     int num_entries = nn->size / sizeof(direntry);
@@ -126,10 +136,7 @@ nufs_mknod(const char *path, mode_t mode, dev_t rdev)
     }
 
     inode* nn = get_inode(inum);
-    nn->refs = 1;
     nn->mode = mode;
-    nn->size = 0;
-    nn->pages = 0;
 
     // NOTE putting all new files in root directory for hw10
     inode* dd = get_inode(dir_inum);

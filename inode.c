@@ -14,7 +14,7 @@
 
 void
 print_inode(inode* node) {
-    printf("inode of size %d\n", node->size);
+    printf("inode of size %ld\n", node->size);
 }
 
 inode*
@@ -34,7 +34,7 @@ alloc_inode() {
             bitmap_set(ibm, ii, 1);
 	        inode* nn = get_inode(ii);
             nn->size = 0;
-            nn->pages = 0;
+    	    nn->refs = 1;
             return ii;
         }
     }
@@ -48,8 +48,9 @@ free_inode(int inum) {
     assert(bitmap_get(ibm, inum));
 
     inode* nn = get_inode(inum);
+    int num_pages = bytes_to_pages(nn->size);
 
-    for (int ii = 0; ii < nn->pages; ++ii)
+    for (int ii = 0; ii < num_pages; ++ii)
         if (ii < DIRECT_PAGES) free_page(nn->ptrs[ii]);
     
     bitmap_set(ibm, inum, 0);
@@ -59,18 +60,18 @@ int
 inode_grow(inode* nn, int size) {
     assert(size > nn->size);
 
+    int num_pages = bytes_to_pages(nn->size);
     int new_num_pages = bytes_to_pages(size);
     nn->size = size;
 
-    if (nn->pages == new_num_pages) return 0;
+    if (num_pages == new_num_pages) return 0;
     
-    for (int ii = nn->pages; ii < new_num_pages; ++ii) {
+    for (int ii = num_pages; ii < new_num_pages; ++ii) {
         nn->ptrs[ii] = alloc_page();
         printf("allocated pate %d to inode's ptr %d\n", nn->ptrs[ii], ii);
     }
 
-    printf("grew from %d to %d pages\n", nn->pages, new_num_pages);
-    nn->pages = new_num_pages;
+    printf("grew from %d to %d pages\n", num_pages, new_num_pages);
 
     return 0;
 }
@@ -78,16 +79,16 @@ inode_grow(inode* nn, int size) {
 int
 inode_shrink(inode* nn, int size) {
     assert(size < nn->size);
-    int new_num_pages = bytes_to_pages(size);
 
+    int num_pages = bytes_to_pages(nn->size);
+    int new_num_pages = bytes_to_pages(size);
     nn->size = size;
-    if (nn->pages == new_num_pages) return 0;
+
+    if (num_pages == new_num_pages) return 0;
     
-    for (int ii = nn->pages; ii < new_num_pages; ++ii) {
+    for (int ii = num_pages; ii < new_num_pages; ++ii) {
         free_page(nn->ptrs[ii]);
     }
-
-    nn->pages = new_num_pages;
 
     return 0;
 }
