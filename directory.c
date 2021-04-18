@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <libgen.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "directory.h"
 #include "slist.h"
 #include "util.h"
@@ -51,12 +52,15 @@ tree_lookup(const char* path) {
 
     while (path_dirs->next) {
     	char* subdir = strdup(dir);
-	printf("setting subdir to %s + %s", dir, path_dirs->data);
-    	strcat(subdir, path_dirs->data);
+	printf("setting subdir to %s + %s\n", dir, path_dirs->data);
+	// if (strlen(subdir) > 1) strcat(subdir, "/");
+	strcat(subdir, path_dirs->data);
 	
 	rv = directory_lookup(curr_inode, subdir);
 	if (rv == -1) return rv;
 	curr_inode = get_inode(rv);
+
+	if (!S_ISDIR(curr_inode->mode)) break;
 
 	path_dirs = path_dirs->next;
 	free(dir);
@@ -112,10 +116,10 @@ directory_put(inode* dd, const char* name, int inum) {
 
 int
 rename_entry(const char* from, const char* to) {
-    char* dir = get_dir(from);
-    int dnum = directory_lookup(get_inode(0), dir);
+    // char* dir = get_dir(from);
+    int dnum = tree_lookup(from); // directory_lookup(get_inode(0), dir);
     inode* dd = get_inode(dnum);
-    free(dir);
+    // free(dir);
 
     void* dir_page = pages_get_page(dd->ptrs[0]);
     int num_entries = dd->size / sizeof(direntry);
