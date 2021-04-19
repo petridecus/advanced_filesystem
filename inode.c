@@ -32,9 +32,10 @@ alloc_inode() {
     for (int ii = 0; ii < MAX_INODES; ++ii) {
         if (!bitmap_get(ibm, ii)) {
             bitmap_set(ibm, ii, 1);
-	        inode* nn = get_inode(ii);
+	    inode* nn = get_inode(ii);
             nn->size = 0;
     	    nn->refs = 1;
+	    printf("+ alloc_inode -> %d\n", ii);
             return ii;
         }
     }
@@ -48,6 +49,9 @@ free_inode(int inum) {
     assert(bitmap_get(ibm, inum));
 
     inode* nn = get_inode(inum);
+
+    memset(nn, 0, sizeof(inode));
+
     int num_pages = bytes_to_pages(nn->size);
 
     for (int ii = 0; ii < num_pages; ++ii)
