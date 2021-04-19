@@ -52,8 +52,10 @@ tree_lookup(const char* path) {
     printf("in tree_lookup, starting search in dir %s\n", dir);
 
     while (path_dirs->next) {
-    	char* subdir = strdup(dir);
+    	char* subdir = malloc(48 * sizeof(char));
+	memcpy(subdir, dir, strlen(dir) + 1);
 	printf("setting subdir to %s + %s\n", dir, path_dirs->data);
+
 	if (strlen(subdir) > 1) strcat(subdir, "/");
 	strcat(subdir, path_dirs->data);
 	
@@ -62,7 +64,7 @@ tree_lookup(const char* path) {
 	if (rv == -1) {
 	    free(dir);
 	    free(subdir);
-	    free(orig_dirs);
+	    s_free(orig_dirs);
 	    return rv;
 	}
 
@@ -71,7 +73,7 @@ tree_lookup(const char* path) {
 	if (!S_ISDIR(curr_inode->mode)) {
 	    free(dir);
 	    free(subdir);
-	    free(orig_dirs);
+	    s_free(orig_dirs);
 	    break;
 	}
 	
@@ -82,6 +84,7 @@ tree_lookup(const char* path) {
 	dir = subdir;
     }
 
+    s_free(orig_dirs);
     return ret; 
 }
 
