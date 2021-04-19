@@ -62,6 +62,7 @@ tree_lookup(const char* path) {
 	if (rv == -1) {
 	    free(dir);
 	    free(subdir);
+	    free(orig_dirs);
 	    return rv;
 	}
 
@@ -70,6 +71,7 @@ tree_lookup(const char* path) {
 	if (!S_ISDIR(curr_inode->mode)) {
 	    free(dir);
 	    free(subdir);
+	    free(orig_dirs);
 	    break;
 	}
 	
