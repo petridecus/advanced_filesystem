@@ -38,13 +38,14 @@ tree_lookup(const char* path) {
     if (!strcmp(path, "/")) return 0;
 
     int rv = 0;
+    int ret = 0;
 
     slist* path_dirs = s_split(path, '/');
     slist* orig_dirs = path_dirs;
 
     path_dirs = path_dirs->next;
 
-    char* dir = malloc(strlen(path) * sizeof(char));
+    char* dir = malloc(48 * sizeof(char));
     memcpy(dir, "/", 2);
     inode* curr_inode = get_inode(0);
 
@@ -53,22 +54,33 @@ tree_lookup(const char* path) {
     while (path_dirs->next) {
     	char* subdir = strdup(dir);
 	printf("setting subdir to %s + %s\n", dir, path_dirs->data);
-	// if (strlen(subdir) > 1) strcat(subdir, "/");
+	if (strlen(subdir) > 1) strcat(subdir, "/");
 	strcat(subdir, path_dirs->data);
 	
 	rv = directory_lookup(curr_inode, subdir);
-	if (rv == -1) return rv;
+	
+	if (rv == -1) {
+	    free(dir);
+	    free(subdir);
+	    return rv;
+	}
+
 	curr_inode = get_inode(rv);
 
-	if (!S_ISDIR(curr_inode->mode)) break;
+	if (!S_ISDIR(curr_inode->mode)) {
+	    free(dir);
+	    free(subdir);
+	    break;
+	}
+	
+	ret = rv;
 
 	path_dirs = path_dirs->next;
 	free(dir);
 	dir = subdir;
     }
 
-    free(dir);
-    return rv; 
+    return ret; 
 }
 
 int 
