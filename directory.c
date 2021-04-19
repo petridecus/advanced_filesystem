@@ -8,7 +8,7 @@
 #include "slist.h"
 #include "util.h"
 
-#define MAX_ENTRIES 254 // (4096 - sizeof(int)) / sizeof(dirent)
+#define MAX_ENTRIES 254 // (4096 - sizeof(int)) / sizeof(direntry)
 
 // NOTE view directory.h for documentation on direntry functions/struct
 
@@ -47,21 +47,21 @@ tree_lookup(const char* path) {
     printf("in tree_lookup, starting search in dir %s\n", dir);
 
     while (path_dirs->next) {
-    	char* subdir = malloc(48 * sizeof(char));
-	memcpy(subdir, dir, strlen(dir) + 1);
-	printf("setting subdir to %s + %s\n", dir, path_dirs->data);
+        char* subdir = malloc(48 * sizeof(char));
+        memcpy(subdir, dir, strlen(dir) + 1);
+        printf("setting subdir to %s + %s\n", dir, path_dirs->data);
 
-	if (strlen(subdir) > 1) strcat(subdir, "/");
-	strcat(subdir, path_dirs->data);
+        if (strlen(subdir) > 1) strcat(subdir, "/");
+        strcat(subdir, path_dirs->data);
 	
-	rv = directory_lookup(curr_inode, subdir);
+        rv = directory_lookup(curr_inode, subdir);
 	
-	if (rv == -1) {
-	    free(dir);
-	    free(subdir);
-	    s_free(orig_dirs);
-	    return rv;
-	}
+        if (rv == -1) {
+            free(dir);
+            free(subdir);
+            s_free(orig_dirs);
+            return rv;
+        }
 
 	curr_inode = get_inode(rv);
 
