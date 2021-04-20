@@ -200,7 +200,24 @@ nufs_link(const char *from, const char *to)
 int
 nufs_rmdir(const char *path)
 {
-    int rv = -1;
+    int rv = 0;
+
+    int pnum = tree_lookup(path);
+    inode* parent_dnode = get_inode(pnum);
+
+    int dnum = directory_lookup(parent_dnode, path);
+    inode* dnode = get_inode(dnum);
+
+    int num_entries = dnode->size / sizeof(direntry);
+
+    void* direntries = pages_get_page(dnode->ptrs[0]);
+    for (int ii = 0; ii < num_entries; ++ii) {
+        direntry* ent = (direntry*)(direntries + ii * sizeof(direntry));
+        directory_delete(dnode, ent->name);
+    }
+
+    directory_delete(parent_dnode, path);
+
     printf("rmdir(%s) -> %d\n", path, rv);
     return rv;
 }
