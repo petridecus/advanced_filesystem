@@ -13,13 +13,13 @@
 void
 bitmap_print(void* bm, int size) {
     for (int ii = 0; ii < size; ++ii) {
-        printf("bitmap %d: %c\n ", ii, bitmap_get(bm, ii));
+        printf("bitmap %d: %d\n ", ii, bitmap_get(bm, ii));
     }
 }
 
 int
 bitmap_get(void* bm, int ii) {
-    char* slot = (char*)(bm+ii);
+    char* slot = (char*)bm + ii;
     char cc = *(slot);
     int val = (int) cc;
     return val;
