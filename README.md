@@ -1,8 +1,3 @@
-TODO
+## Advanced EXT Style Filesystem
 
-symbolic links 
- - need to add a new callback
-
-bugs
- - why is the cp test failing???
- - tree lookup is weird
+### Designed as Final Challenge Assignment for CS3650 (Computer Systems)
